@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
@@ -38,7 +39,7 @@
                     </svg>
                 </a>
 
-                <a href="https://maps.app.goo.gl/gNx5MF86ANSufkgUA" 
+                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" 
                 target="_blank" 
                 class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-orange-50 hover:text-orange-600 group">
                     <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">
@@ -93,19 +94,25 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
-            const hasAccess = ref(false); // 永遠預設為 false，每次進來都要驗證
+            const hasAccess = ref(false); 
             
-            // 檢查網址是否有管理員暗號
             const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
 
-            // 密碼檢查函式
+            // 強化後的密碼檢查函式
             const checkPassword = () => {
                 const password = prompt("請輸入管理員密碼：");
-                if (password === "2580") {
+                
+                // 將輸入的文字進行 SHA-256 加密轉換
+                const hashedInput = CryptoJS.SHA256(password).toString();
+
+                // 2580 的 SHA-256 指紋
+                const secretFingerprint = "f0744669f648d88da427670783511eb9c5040f7d5c7c223c78d46247c1f80879";
+
+                if (hashedInput === secretFingerprint) {
                     hasAccess.value = true;
                 } else {
                     alert("密碼錯誤，將返回主頁！");
-                    window.location.href = window.location.origin; // 踢回不帶參數的頁面
+                    window.location.href = window.location.origin;
                 }
             };
 
@@ -135,12 +142,9 @@
             };
 
             onMounted(() => {
-                // 修改後的執行順序：先抓資料，再判斷權限
                 fetchData();
 
-                // 只有當網址確實符合管理員暗號時，才跳出密碼框
                 if (isAdmin.value) {
-                    // 使用 setTimeout 確保在頁面載入穩定後才跳出 prompt
                     setTimeout(() => {
                         checkPassword();
                     }, 100);
