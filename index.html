@@ -65,77 +65,67 @@
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    // --- 連線資訊 ---
     const SUPABASE_URL = 'https://yqedcpfjbkyjgmauahze.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM'; 
-    
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     createApp({
         setup() {
-            // 預設值改為 0，避免 0.1 秒的預設值閃爍
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const isAdmin = ref(window.location.search.includes('admin=true'));
+            
+            // 用於處理快速點擊的計時器
+            let debounceTimer = null;
 
             const remainingSeats = computed(() => {
                 let res = totalSeats.value - currentOccupancy.value;
                 return res < 0 ? 0 : res;
             });
 
-            // 抓取雲端最新資料
             const fetchData = async () => {
-                try {
-                    const { data, error } = await client
-                        .from('store_seats')
-                        .select('*')
-                        .eq('id', 1) 
-                        .single();
-                    
-                    if (data) {
-                        totalSeats.value = data.total_seats;
-                        currentOccupancy.value = data.current_occupancy;
-                    }
-                } catch (e) {
-                    console.error("資料載入異常", e);
+                const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
+                if (data) {
+                    totalSeats.value = data.total_seats;
+                    currentOccupancy.value = data.current_occupancy;
                 }
             };
 
-            // 員工更新邏輯
-            const updateSeats = async (delta) => {
+            // 優化後的更新邏輯
+            const updateSeats = (delta) => {
                 const newValue = currentOccupancy.value + delta;
-                // 防止人數小於 0 或大於總座位
                 if (newValue < 0 || newValue > totalSeats.value) return;
 
-                // 立即更新前端 UI (Optimistic Update)
+                // 1. 立即更新前端 UI（讓員工感覺沒延遲）
                 currentOccupancy.value = newValue;
 
-                // 更新資料庫
-                const { error } = await client
-                    .from('store_seats')
-                    .update({ current_occupancy: newValue })
-                    .eq('id', 1);
-                
-                if (error) {
-                    console.error("更新同步失敗", error);
-                    fetchData(); // 失敗時回滾資料
-                }
+                // 2. 清除之前的計時器
+                clearTimeout(debounceTimer);
+
+                // 3. 設定一個 300 毫秒後才執行的「最終更新」
+                debounceTimer = setTimeout(async () => {
+                    const { error } = await client
+                        .from('store_seats')
+                        .update({ current_occupancy: currentOccupancy.value })
+                        .eq('id', 1);
+                    
+                    if (error) {
+                        console.error("同步失敗，回滾資料");
+                        fetchData(); 
+                    }
+                }, 300); // 0.3 秒內連續點擊都只會觸發一次 API 請求
             };
 
             onMounted(() => {
                 fetchData();
-
-                // 開啟 Realtime 即時聽取更新
-                client
-                    .channel('store-realtime')
+                client.channel('store-realtime')
                     .on('postgres_changes', { 
-                        event: 'UPDATE', 
-                        schema: 'public', 
-                        table: 'store_seats',
-                        filter: 'id=eq.1'
+                        event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                     }, payload => {
-                        currentOccupancy.value = payload.new.current_occupancy;
-                        totalSeats.value = payload.new.total_seats;
+                        // 只有當不是 Admin 在點擊時，才接收即時更新，避免畫面跳動
+                        if (!debounceTimer) {
+                            currentOccupancy.value = payload.new.current_occupancy;
+                        }
                     })
                     .subscribe();
             });
