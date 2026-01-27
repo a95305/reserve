@@ -46,15 +46,15 @@
         </div>
     </div>
 
-    <div class="w-full max-w-sm mt-10 p-6 bg-gray-800 rounded-3xl text-white shadow-xl">
-        <p class="text-xs text-gray-400 text-center mb-4 italic">員工管理面板 (模擬畫面)</p>
+    <div v-if="isAdmin" class="w-full max-w-sm mt-10 p-6 bg-gray-800 rounded-3xl text-white shadow-xl">
+        <p class="text-xs text-gray-400 text-center mb-4 italic">員工管理面板</p>
         <div class="flex justify-between items-center">
-            <button @click="updateSeats(1)" class="bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded-full text-2xl">-</button>
+            <button @click="updateSeats(1)" class="bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded-full text-2xl">－</button>
             <div class="text-center">
                 <div class="text-2xl font-bold">{{ currentOccupancy }}</div>
                 <div class="text-[10px] text-gray-400 uppercase">目前店內人數</div>
             </div>
-            <button @click="updateSeats(-1)" class="bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded-full text-2xl">+</button>
+            <button @click="updateSeats(-1)" class="bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded-full text-2xl">＋</button>
         </div>
     </div>
 </div>
@@ -62,15 +62,18 @@
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    // --- 請在此填入你的 Supabase 資訊 ---
+    // --- 資訊確認區 ---
     const SUPABASE_URL = 'https://yqedcpfjbkyjgmauahze.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM'; // 請確保這是 anon key
+    
+    // 修正：使用全域物件建立連線，避免名稱衝突
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     createApp({
         setup() {
             const totalSeats = ref(11);
             const currentOccupancy = ref(0);
+            const isAdmin = ref(window.location.search.includes('admin=true'));
 
             const remainingSeats = computed(() => {
                 let res = totalSeats.value - currentOccupancy.value;
@@ -79,13 +82,19 @@
 
             // 抓取初始資料
             const fetchData = async () => {
-                const { data, error } = await supabase
-                    .from('store_seats')
-                    .select('*')
-                    .single();
-                if (data) {
-                    totalSeats.value = data.total_seats;
-                    currentOccupancy.value = data.current_occupancy;
+                try {
+                    const { data, error } = await client
+                        .from('store_seats')
+                        .select('*')
+                        .eq('id', 1) // 確保你的 SQL insert 的 ID 是 1
+                        .single();
+                    
+                    if (data) {
+                        totalSeats.value = data.total_seats;
+                        currentOccupancy.value = data.current_occupancy;
+                    }
+                } catch (e) {
+                    console.error("資料抓取失敗", e);
                 }
             };
 
@@ -94,24 +103,34 @@
                 const newValue = currentOccupancy.value + delta;
                 if (newValue < 0 || newValue > totalSeats.value) return;
 
-                const { error } = await supabase
+                // 先在前端更新畫面，增加流暢感
+                currentOccupancy.value = newValue;
+
+                const { error } = await client
                     .from('store_seats')
                     .update({ current_occupancy: newValue })
-                    .eq('id', '1'); // 這裡填入資料表的 row ID
+                    .eq('id', 1);
+                
+                if (error) console.error("更新失敗", error);
             };
 
-            // 監聽資料庫變動 (Realtime)
             onMounted(() => {
                 fetchData();
-                supabase
-                    .channel('any')
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'store_seats' }, payload => {
+
+                // 即時監聽：當資料庫變動時，自動同步所有人的畫面
+                client
+                    .channel('schema-db-changes')
+                    .on('postgres_changes', { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'store_seats' 
+                    }, payload => {
                         currentOccupancy.value = payload.new.current_occupancy;
                     })
                     .subscribe();
             });
 
-            return { totalSeats, currentOccupancy, remainingSeats, updateSeats };
+            return { totalSeats, currentOccupancy, remainingSeats, updateSeats, isAdmin };
         }
     }).mount('#app');
 </script>
