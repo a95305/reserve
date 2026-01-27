@@ -10,12 +10,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
-        
-        /* 解決載入閃爍問題：在 Vue 準備好前隱藏 {{ 標籤 }} */
         [v-cloak] { display: none; }
-        
-        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
-        .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
@@ -44,11 +39,10 @@
                     <span class="text-sm text-gray-400 font-medium">位 / 共 {{ totalSeats }} 位</span>
                 </div>
             </div>
-            
-            </div>
+        </div>
     </div>
 
-    <div v-if="isAdmin" class="w-full max-w-sm mt-10 p-6 bg-gray-800 rounded-3xl text-white shadow-xl">
+    <div v-if="isAdmin && hasAccess" class="w-full max-w-sm mt-10 p-6 bg-gray-800 rounded-3xl text-white shadow-xl">
         <p class="text-xs text-orange-400 text-center mb-4 font-bold tracking-widest">STAFF ONLY | 員工管理</p>
         <div class="flex justify-between items-center">
             <button @click="updateSeats(1)" class="bg-gray-700 hover:bg-gray-600 active:scale-95 w-14 h-14 rounded-full text-2xl transition shadow-lg">＋</button>
@@ -58,7 +52,6 @@
             </div>
             <button @click="updateSeats(-1)" class="bg-gray-700 hover:bg-gray-600 active:scale-95 w-14 h-14 rounded-full text-2xl transition shadow-lg">－</button>
         </div>
-        <p class="text-[10px] text-gray-500 text-center mt-4">提示：按「＋」代表進客，按「－」代表離場</p>
     </div>
 </div>
 
@@ -73,20 +66,23 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
-            const hasAccess = ref(true); // 新增：是否通過密碼驗證
-    
+            
+            // 修正處 2：預設設為 false，必須通過驗證才變 true
+            const hasAccess = ref(false); 
+            
             const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
 
+            // 密碼檢查邏輯
             const checkPassword = () => {
-            const password = prompt("請輸入管理員密碼：");
-            if (password === "2580") { // 這裡設定你的密碼
-                hasAccess.value = true;
-            } else {
-                alert("密碼錯誤！");
-                window.location.href = window.location.origin; // 踢回首頁
-            }
+                const password = prompt("請輸入管理員密碼：");
+                if (password === "2580") {
+                    hasAccess.value = true;
+                } else {
+                    alert("密碼錯誤！");
+                    window.location.href = window.location.origin; // 踢回首頁
+                }
             };
-            // 用於處理快速點擊的計時器
+
             let debounceTimer = null;
 
             const remainingSeats = computed(() => {
@@ -102,38 +98,28 @@
                 }
             };
 
-            // 優化後的更新邏輯
             const updateSeats = (delta) => {
                 const newValue = currentOccupancy.value + delta;
                 if (newValue < 0 || newValue > totalSeats.value) return;
-
-                // 1. 立即更新前端 UI（讓員工感覺沒延遲）
                 currentOccupancy.value = newValue;
-
-                // 2. 清除之前的計時器
                 clearTimeout(debounceTimer);
-
-                // 3. 設定一個 300 毫秒後才執行的「最終更新」
                 debounceTimer = setTimeout(async () => {
-                    const { error } = await client
-                        .from('store_seats')
-                        .update({ current_occupancy: currentOccupancy.value })
-                        .eq('id', 1);
-                    
-                    if (error) {
-                        console.error("同步失敗，回滾資料");
-                        fetchData(); 
-                    }
-                }, 300); // 0.3 秒內連續點擊都只會觸發一次 API 請求
+                    await client.from('store_seats').update({ current_occupancy: currentOccupancy.value }).eq('id', 1);
+                    debounceTimer = null;
+                }, 300);
             };
 
             onMounted(() => {
+                // 修正處 3：如果是管理員模式，啟動時立即要求輸入密碼
+                if (isAdmin.value) {
+                    checkPassword();
+                }
+                
                 fetchData();
                 client.channel('store-realtime')
                     .on('postgres_changes', { 
                         event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                     }, payload => {
-                        // 只有當不是 Admin 在點擊時，才接收即時更新，避免畫面跳動
                         if (!debounceTimer) {
                             currentOccupancy.value = payload.new.current_occupancy;
                         }
@@ -141,10 +127,9 @@
                     .subscribe();
             });
 
-            return { totalSeats, currentOccupancy, remainingSeats, updateSeats, isAdmin };
+            return { totalSeats, currentOccupancy, remainingSeats, updateSeats, isAdmin, hasAccess };
         }
     }).mount('#app');
 </script>
 </body>
 </html>
-
