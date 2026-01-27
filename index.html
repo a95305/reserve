@@ -73,8 +73,19 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
-            const isAdmin = ref(window.location.search.includes('admin=true'));
-            
+            const hasAccess = ref(false); // 新增：是否通過密碼驗證
+    
+            const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
+
+            const checkPassword = () => {
+            const password = prompt("請輸入管理員密碼：");
+            if (password === "2580") { // 這裡設定你的密碼
+                hasAccess.value = true;
+            } else {
+                alert("密碼錯誤！");
+                window.location.href = window.location.origin; // 踢回首頁
+            }
+            };
             // 用於處理快速點擊的計時器
             let debounceTimer = null;
 
