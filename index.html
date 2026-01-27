@@ -73,7 +73,7 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
-            const hasAccess = ref(false); // 新增：是否通過密碼驗證
+            const hasAccess = ref(true); // 新增：是否通過密碼驗證
     
             const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
 
@@ -147,3 +147,4 @@
 </script>
 </body>
 </html>
+
