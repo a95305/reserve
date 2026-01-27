@@ -104,7 +104,8 @@
                 
                 // 將輸入的文字進行 SHA-256 加密轉換
                 const hashedInput = CryptoJS.SHA256(password).toString();
-
+                // 這一行可以幫你找出問題：
+                console.log("你輸入的加密結果是：", hashedInput);
                 // 2580 的 SHA-256 指紋
                 const secretFingerprint = "f0744669f648d88da427670783511eb9c5040f7d5c7c223c78d46247c1f80879";
 
@@ -167,4 +168,5 @@
 </script>
 </body>
 </html>
+
 
