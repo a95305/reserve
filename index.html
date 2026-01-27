@@ -66,20 +66,19 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
+            const hasAccess = ref(false); // 永遠預設為 false，每次進來都要驗證
             
-            // 修正處 2：預設設為 false，必須通過驗證才變 true
-            const hasAccess = ref(false); 
-            
+            // 檢查網址是否有管理員暗號
             const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
 
-            // 密碼檢查邏輯
+            // 密碼檢查函式
             const checkPassword = () => {
                 const password = prompt("請輸入管理員密碼：");
                 if (password === "2580") {
                     hasAccess.value = true;
                 } else {
-                    alert("密碼錯誤！");
-                    window.location.href = window.location.origin; // 踢回首頁
+                    alert("密碼錯誤，將返回主頁！");
+                    window.location.href = window.location.origin; // 踢回不帶參數的頁面
                 }
             };
 
@@ -105,17 +104,21 @@
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(async () => {
                     await client.from('store_seats').update({ current_occupancy: currentOccupancy.value }).eq('id', 1);
-                    debounceTimer = null;
                 }, 300);
             };
 
             onMounted(() => {
-                // 修正處 3：如果是管理員模式，啟動時立即要求輸入密碼
-                if (isAdmin.value) {
-                    checkPassword();
-                }
-                
+                // 修改後的執行順序：先抓資料，再判斷權限
                 fetchData();
+
+                // 只有當網址確實符合管理員暗號時，才跳出密碼框
+                if (isAdmin.value) {
+                    // 使用 setTimeout 確保在頁面載入穩定後才跳出 prompt
+                    setTimeout(() => {
+                        checkPassword();
+                    }, 100);
+                }
+
                 client.channel('store-realtime')
                     .on('postgres_changes', { 
                         event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
