@@ -20,6 +20,15 @@
     <div v-if="hasAccess" class="w-full max-w-sm p-8 bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-700">
         <p class="text-xs text-orange-400 text-center mb-6 font-bold tracking-widest uppercase">STAFF ONLY | 員工管理</p>
         
+        <div class="mb-6 flex items-center justify-between bg-gray-700/50 p-4 rounded-2xl border border-gray-600">
+            <span class="text-sm font-bold">手動營業開關</span>
+            <button @click="toggleBusiness" 
+                :class="isManualOpen ? 'bg-green-500' : 'bg-red-500'"
+                class="px-6 py-2 rounded-full text-xs font-black transition-all active:scale-95 shadow-lg">
+                {{ isManualOpen ? 'ON 營業中' : 'OFF 休息中' }}
+            </button>
+        </div>
+
         <div class="flex justify-between items-center bg-gray-700 p-6 rounded-3xl">
             <button @click="updateSeats(1)" class="bg-gray-600 hover:bg-gray-500 active:scale-90 w-16 h-16 rounded-full text-3xl transition">＋</button>
             <div class="text-center">
@@ -34,19 +43,11 @@
         </div>
 
         <div class="mt-8 border-t border-gray-700 pt-6">
-            <label class="text-[10px] text-gray-400 uppercase tracking-widest block mb-2 text-center">臨時狀態設定 (如：臨時外出)</label>
+            <label class="text-[10px] text-gray-400 uppercase tracking-widest block mb-2 text-center">臨時狀態 (如：臨時外出)</label>
             <div class="flex gap-2">
-                <input 
-                    v-model="statusInput" 
-                    placeholder="例如：臨時外出中" 
-                    class="flex-1 bg-gray-700 border border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500 text-white"
-                >
-                <button 
-                    @click="updateStatus" 
-                    class="bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
-                >
-                    更新
-                </button>
+                <input v-model="statusInput" placeholder="輸入內容..." 
+                    class="flex-1 bg-gray-700 border border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500 text-white">
+                <button @click="updateStatus" class="bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-4 py-2 rounded-xl transition">更新</button>
             </div>
             <button @click="clearStatus" class="w-full mt-2 text-[10px] text-gray-500 hover:text-gray-300">清除自訂狀態</button>
         </div>
@@ -65,23 +66,16 @@
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const statusInput = ref("");
+            const isManualOpen = ref(true);
             let debounceTimer = null;
 
-            // 密碼驗證邏輯
             const checkPassword = () => {
                 const password = prompt("請輸入員工驗證密碼：");
                 if (!password) { window.location.href = "index.html"; return; }
-
                 const hashedInput = CryptoJS.SHA256(password).toString();
-                const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf"; // 密碼 2580
-
-                if (hashedInput === secretFingerprint) {
-                    hasAccess.value = true;
-                    fetchData();
-                } else {
-                    alert("驗證失敗！");
-                    window.location.href = "index.html";
-                }
+                if (hashedInput === "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf") {
+                    hasAccess.value = true; fetchData();
+                } else { alert("驗證失敗！"); window.location.href = "index.html"; }
             };
 
             const fetchData = async () => {
@@ -89,44 +83,38 @@
                 if (data) {
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
-                    statusInput.value = data.status_text || ""; // 同步目前的臨時狀態
+                    statusInput.value = data.status_text || "";
+                    isManualOpen.value = data.is_manual_open;
                 }
             };
 
-            // 更新人數
+            const toggleBusiness = async () => {
+                isManualOpen.value = !isManualOpen.value;
+                await client.from('store_seats').update({ is_manual_open: isManualOpen.value }).eq('id', 1);
+            };
+
             const updateSeats = (delta) => {
                 const newValue = currentOccupancy.value + delta;
                 if (newValue < 0 || newValue > totalSeats.value) return;
                 currentOccupancy.value = newValue;
-                
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(async () => {
                     await client.from('store_seats').update({ current_occupancy: currentOccupancy.value }).eq('id', 1);
                 }, 300);
             };
 
-            // 更新臨時狀態文字
             const updateStatus = async () => {
-                const { error } = await client.from('store_seats').update({ status_text: statusInput.value }).eq('id', 1);
-                if (!error) alert("狀態已更新！");
-                else alert("更新失敗，請檢查資料庫欄位設定");
+                await client.from('store_seats').update({ status_text: statusInput.value }).eq('id', 1);
+                alert("狀態已同步至前台！");
             };
 
-            // 清除臨時狀態
             const clearStatus = async () => {
                 statusInput.value = "";
                 await client.from('store_seats').update({ status_text: "" }).eq('id', 1);
-                alert("自訂狀態已清除");
             };
 
-            onMounted(() => {
-                setTimeout(checkPassword, 100);
-            });
-
-            return { 
-                hasAccess, totalSeats, currentOccupancy, statusInput,
-                updateSeats, updateStatus, clearStatus 
-            };
+            onMounted(() => { setTimeout(checkPassword, 100); });
+            return { hasAccess, totalSeats, currentOccupancy, statusInput, isManualOpen, updateSeats, updateStatus, clearStatus, toggleBusiness };
         }
     }).mount('#app');
 </script>
