@@ -2,29 +2,38 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>yuancoffee_only | 員工管理後台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STAFF ONLY | 管理後台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        [v-cloak] { display: none; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
 
-<div id="app" v-cloak class="w-full max-w-sm p-8 bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-700">
-    <div v-if="hasAccess">
-        <p class="text-xs text-orange-400 text-center mb-6 font-bold tracking-widest uppercase">YUANCOFFEE 管理系統</p>
+<div id="app" v-cloak>
+    <div v-if="hasAccess" class="w-full max-w-sm p-8 bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-700">
+        <p class="text-xs text-orange-400 text-center mb-6 font-bold tracking-widest uppercase">STAFF ONLY | 員工管理</p>
         
-        <div class="flex justify-between items-center bg-gray-700 p-6 rounded-3xl mb-4">
-            <button @click="updateSeats(1)" class="bg-gray-600 hover:bg-orange-500 w-16 h-16 rounded-full text-3xl transition active:scale-90 shadow-lg">＋</button>
+        <div class="flex justify-between items-center bg-gray-700 p-6 rounded-3xl">
+            <button @click="updateSeats(1)" class="bg-gray-600 hover:bg-gray-500 active:scale-90 w-16 h-16 rounded-full text-3xl transition">＋</button>
             <div class="text-center">
-                <div class="text-5xl font-black text-orange-400">{{ currentOccupancy }}</div>
-                <div class="text-[10px] text-gray-400 mt-1 uppercase">目前店內人數</div>
+                <div class="text-4xl font-bold text-orange-400">{{ currentOccupancy }}</div>
+                <div class="text-[10px] text-gray-400 uppercase">目前人數</div>
             </div>
-            <button @click="updateSeats(-1)" class="bg-gray-600 hover:bg-orange-500 w-16 h-16 rounded-full text-3xl transition active:scale-90 shadow-lg">－</button>
+            <button @click="updateSeats(-1)" class="bg-gray-600 hover:bg-gray-500 active:scale-90 w-16 h-16 rounded-full text-3xl transition">－</button>
         </div>
         
-        <p class="text-center text-xs text-gray-500">總座位：{{ totalSeats }} 位</p>
-        <button @click="logout" class="w-full mt-6 text-xs text-gray-500 hover:text-white underline">安全登出</button>
+        <div class="mt-8 text-center text-xs text-gray-500">
+            總座位數：{{ totalSeats }} | 剩餘：{{ totalSeats - currentOccupancy }}
+        </div>
+        
+        <button onclick="location.reload()" class="w-full mt-6 py-2 text-xs text-gray-600 hover:text-white transition">登出/鎖定</button>
     </div>
 </div>
 
@@ -37,19 +46,21 @@
             const hasAccess = ref(false);
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
+            let debounceTimer = null;
 
             const checkPassword = () => {
-                const password = prompt("員工驗證：請輸入管理員密碼");
+                const password = prompt("請輸入員工驗證密碼：");
+                if (!password) { window.location.href = "index.html"; return; }
+
                 const hashedInput = CryptoJS.SHA256(password).toString();
-                // 使用你自己跑出來的那串正確指紋
                 const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf";
 
                 if (hashedInput === secretFingerprint) {
                     hasAccess.value = true;
                     fetchData();
                 } else {
-                    alert("驗證失敗");
-                    window.location.href = "index.html"; 
+                    alert("驗證失敗！");
+                    window.location.href = "index.html";
                 }
             };
 
@@ -61,21 +72,22 @@
                 }
             };
 
-            const updateSeats = async (delta) => {
+            const updateSeats = (delta) => {
                 const newValue = currentOccupancy.value + delta;
                 if (newValue < 0 || newValue > totalSeats.value) return;
-                
                 currentOccupancy.value = newValue;
-                await client.from('store_seats').update({ current_occupancy: newValue }).eq('id', 1);
+                
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                    await client.from('store_seats').update({ current_occupancy: currentOccupancy.value }).eq('id', 1);
+                }, 300);
             };
-
-            const logout = () => { window.location.reload(); };
 
             onMounted(() => {
                 setTimeout(checkPassword, 100);
             });
 
-            return { hasAccess, totalSeats, currentOccupancy, updateSeats, logout };
+            return { hasAccess, totalSeats, currentOccupancy, updateSeats };
         }
     }).mount('#app');
 </script>
