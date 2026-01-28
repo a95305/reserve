@@ -11,22 +11,23 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
         [v-cloak] { display: none; }
-        /* 休息中專用樣式 */
-        .is-closed-zone { background-color: #f3f4f6 !important; border-color: #e5e7eb !important; }
+        /* 休息中專用樣式：僅針對座位區 */
+        .is-closed-zone { background-color: #f3f4f6 !important; border-color: #e5e7eb !important; pointer-events: none; }
         .is-closed-text { color: #9ca3af !important; }
-        .is-closed-number { color: #6b7280 !important; }
+        .is-closed-number { color: #d1d5db !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
 
 <div id="app" v-cloak class="min-h-screen flex flex-col items-center p-4">
-    <div class="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-8">
+    <div class="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-8 border border-gray-100">
+        
         <div class="h-48 bg-cover bg-center relative" style="background-image: url('https://lh3.googleusercontent.com/p/AF1QipMO2dQGkN3n1GQePAGbiLwB4oIFspSKIM_LwnsU=s1360-w1360-h1020-rw');">
             <div class="absolute mt-4 ml-4 flex flex-col gap-2">
-                <span :class="isOpen ? 'bg-green-500' : 'bg-red-500'" class="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit">
+                <span :class="isOpen ? 'bg-green-500' : 'bg-red-500'" class="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit transition-colors">
                     {{ isOpen ? '● 營業中' : '○ 休息中' }}
                 </span>
-                <span v-if="customStatus" class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit">
+                <span v-if="customStatus" class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit animate-pulse">
                     ⚠️ {{ customStatus }}
                 </span>
             </div>
@@ -40,7 +41,7 @@
             </div>
 
             <div class="mt-6 space-y-3 text-sm">
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-blue-50 text-gray-500 hover:text-blue-600 group">
+                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all hover:bg-blue-50 text-gray-600 group">
                     <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">📍</span>
                     <div class="flex flex-col">
                         <span class="font-semibold group-hover:underline">桃園捷運A8站步行 8 分鐘</span>
@@ -48,7 +49,7 @@
                     </div>
                 </a>
 
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-orange-50 text-gray-500 hover:text-orange-600 group">
+                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all hover:bg-orange-50 text-gray-600 group">
                     <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">🏠</span>
                     <div class="flex flex-col">
                         <span class="font-semibold group-hover:underline">桃園市龜山區復興二路131巷19號1樓</span>
@@ -59,7 +60,7 @@
 
             <hr class="my-6 border-gray-100">
 
-            <div :class="{'is-closed-zone': !isOpen}" class="bg-orange-50 rounded-3xl p-6 text-center border border-orange-100 transition-colors duration-500">
+            <div :class="{'is-closed-zone': !isOpen}" class="bg-orange-50 rounded-3xl p-6 text-center border border-orange-100 transition-all duration-500">
                 <span :class="{'is-closed-text': !isOpen}" class="text-xs font-bold text-orange-400 uppercase tracking-widest block mb-2">
                     {{ isOpen ? '即時座位數' : '目前不提供座位' }}
                 </span>
@@ -84,15 +85,21 @@
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const customStatus = ref("");
+            const isManualOpen = ref(true); // 接收後台的手動開關狀態
 
             const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
 
+            // 核心營業判斷邏輯
             const isOpen = computed(() => {
+                // 1. 如果後台手動關閉，不論時間一律休息
+                if (!isManualOpen.value) return false;
+
+                // 2. 如果手動開啟，則檢查是否在週一公休或營業時段外
                 const now = new Date();
                 const day = now.getDay();
                 const hour = now.getHours();
-                if (day === 1) return false;
-                return (hour >= 11 && hour < 19);
+                if (day === 1) return false; // 週一公休
+                return (hour >= 11 && hour < 19); // 11:00-18:59 營業
             });
 
             const fetchData = async () => {
@@ -101,16 +108,19 @@
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
+                    isManualOpen.value = data.is_manual_open !== false; // 預設為 true
                 }
             };
 
             onMounted(() => {
                 fetchData();
+                // 實時監聽資料庫變化
                 client.channel('store-realtime').on('postgres_changes', { 
                     event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                 }, payload => {
                     currentOccupancy.value = payload.new.current_occupancy;
                     customStatus.value = payload.new.status_text || "";
+                    isManualOpen.value = payload.new.is_manual_open;
                 }).subscribe();
             });
 
