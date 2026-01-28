@@ -104,6 +104,7 @@
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
                 if (data) {
                     totalSeats.value = data.total_seats;
+                    currentOccupancy.value = data.current_occupancy; // 已修正：確保初次加載抓到人數
                     customStatus.value = data.status_text || "";
                     isManualOpen.value = data.is_manual_open;
                 }
