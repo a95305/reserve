@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
@@ -18,40 +17,15 @@
 
 <div id="app" v-cloak class="min-h-screen flex flex-col items-center p-4">
     <div class="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-8">
-        <div class="h-48 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/p/AF1QipMO2dQGkN3n1GQePAGbiLwB4oIFspSKIM_LwnsU=s1360-w1360-h1020-rw');">
+        <div class="h-48 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1501339819358-ee5f8b3003d8?q=80&w=2070&auto=format&fit=crop');">
         </div>
 
         <div class="p-8">
             <h1 class="text-2xl font-extrabold tracking-tight">ㄩㄢˊ咖啡事務所|yuancoffee</h1>
             <div class="mt-6 space-y-3 text-sm text-gray-500">
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" 
-                target="_blank" 
-                class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 group">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">
-                        📍
-                    </span>
-                    <div class="flex flex-col">
-                        <span class="font-semibold text-gray-700 group-hover:underline">桃園捷運A8站步行 8 分鐘</span>
-                        <span class="text-[10px] text-gray-400 font-medium tracking-tighter uppercase">點擊查看捷運站位置</span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </a>
-
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" 
-                target="_blank" 
-                class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-orange-50 hover:text-orange-600 group">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">
-                        🏠
-                    </span>
-                    <div class="flex flex-col">
-                        <span class="font-semibold text-gray-700 group-hover:underline">桃園市龜山區復興二路131巷19號1樓</span>
-                        <span class="text-[10px] text-gray-400 font-medium tracking-tighter uppercase">點擊開啟 Google Maps 導航</span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
+                <a href="https://maps.app.goo.gl/YourMapLink" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl hover:bg-blue-50">
+                    <span class="mr-3">📍</span>
+                    <span class="font-semibold text-gray-700">桃園捷運A8站步行 8 分鐘</span>
                 </a>
             </div>
 
@@ -61,31 +35,16 @@
                 <span class="text-xs font-bold text-orange-400 uppercase tracking-widest">即時座位數</span>
                 <div class="flex justify-center items-baseline mt-2">
                     <span class="text-sm text-gray-400 font-medium">剩餘</span>
-                    <span class="text-6xl font-black text-orange-500 mx-2 transition-all">
-                        {{ remainingSeats }}
-                    </span>
+                    <span class="text-6xl font-black text-orange-500 mx-2">{{ remainingSeats }}</span>
                     <span class="text-sm text-gray-400 font-medium">位 / 共 {{ totalSeats }} 位</span>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div v-if="isAdmin && hasAccess" class="w-full max-w-sm mt-10 p-6 bg-gray-800 rounded-3xl text-white shadow-xl">
-        <p class="text-xs text-orange-400 text-center mb-4 font-bold tracking-widest">STAFF ONLY | 員工管理</p>
-        <div class="flex justify-between items-center">
-            <button @click="updateSeats(1)" class="bg-gray-700 hover:bg-gray-600 active:scale-95 w-14 h-14 rounded-full text-2xl transition shadow-lg">＋</button>
-            <div class="text-center">
-                <div class="text-3xl font-bold text-orange-400">{{ currentOccupancy }}</div>
-                <div class="text-[10px] text-gray-400 uppercase tracking-tighter">目前店內人數</div>
-            </div>
-            <button @click="updateSeats(-1)" class="bg-gray-700 hover:bg-gray-600 active:scale-95 w-14 h-14 rounded-full text-2xl transition shadow-lg">－</button>
         </div>
     </div>
 </div>
 
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
-
     const SUPABASE_URL = 'https://yqedcpfjbkyjgmauahze.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM'; 
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -94,35 +53,7 @@
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
-            const hasAccess = ref(false); 
-            
-            const isAdmin = computed(() => window.location.search.includes('yuancoffee_true'));
-
-            // 強化後的密碼檢查函式
-            const checkPassword = () => {
-                const password = prompt("請輸入管理員密碼：");
-                
-                // 將輸入的文字進行 SHA-256 加密轉換
-                const hashedInput = CryptoJS.SHA256(password).toString();
-                // 這一行可以幫你找出問題：
-                console.log("你輸入的加密結果是：", hashedInput);
-                // 2580 的 SHA-256 指紋
-                const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf";
-
-                if (hashedInput === secretFingerprint) {
-                    hasAccess.value = true;
-                } else {
-                    alert("密碼錯誤，將返回主頁！");
-                    window.location.href = window.location.origin;
-                }
-            };
-
-            let debounceTimer = null;
-
-            const remainingSeats = computed(() => {
-                let res = totalSeats.value - currentOccupancy.value;
-                return res < 0 ? 0 : res;
-            });
+            const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
 
             const fetchData = async () => {
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
@@ -132,42 +63,19 @@
                 }
             };
 
-            const updateSeats = (delta) => {
-                const newValue = currentOccupancy.value + delta;
-                if (newValue < 0 || newValue > totalSeats.value) return;
-                currentOccupancy.value = newValue;
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(async () => {
-                    await client.from('store_seats').update({ current_occupancy: currentOccupancy.value }).eq('id', 1);
-                }, 300);
-            };
-
             onMounted(() => {
                 fetchData();
-
-                if (isAdmin.value) {
-                    setTimeout(() => {
-                        checkPassword();
-                    }, 100);
-                }
-
-                client.channel('store-realtime')
-                    .on('postgres_changes', { 
-                        event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
-                    }, payload => {
-                        if (!debounceTimer) {
-                            currentOccupancy.value = payload.new.current_occupancy;
-                        }
-                    })
-                    .subscribe();
+                // 訂閱即時更新，當管理員修改時，客人網頁會同步跳動
+                client.channel('public-realtime').on('postgres_changes', { 
+                    event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
+                }, payload => {
+                    currentOccupancy.value = payload.new.current_occupancy;
+                }).subscribe();
             });
 
-            return { totalSeats, currentOccupancy, remainingSeats, updateSeats, isAdmin, hasAccess };
+            return { totalSeats, currentOccupancy, remainingSeats };
         }
     }).mount('#app');
 </script>
 </body>
 </html>
-
-
-

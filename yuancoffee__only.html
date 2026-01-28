@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>yuancoffee_only | 員工管理後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+<div id="app" v-cloak class="w-full max-w-sm p-8 bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-700">
+    <div v-if="hasAccess">
+        <p class="text-xs text-orange-400 text-center mb-6 font-bold tracking-widest uppercase">YUANCOFFEE 管理系統</p>
+        
+        <div class="flex justify-between items-center bg-gray-700 p-6 rounded-3xl mb-4">
+            <button @click="updateSeats(1)" class="bg-gray-600 hover:bg-orange-500 w-16 h-16 rounded-full text-3xl transition active:scale-90 shadow-lg">＋</button>
+            <div class="text-center">
+                <div class="text-5xl font-black text-orange-400">{{ currentOccupancy }}</div>
+                <div class="text-[10px] text-gray-400 mt-1 uppercase">目前店內人數</div>
+            </div>
+            <button @click="updateSeats(-1)" class="bg-gray-600 hover:bg-orange-500 w-16 h-16 rounded-full text-3xl transition active:scale-90 shadow-lg">－</button>
+        </div>
+        
+        <p class="text-center text-xs text-gray-500">總座位：{{ totalSeats }} 位</p>
+        <button @click="logout" class="w-full mt-6 text-xs text-gray-500 hover:text-white underline">安全登出</button>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, onMounted } = Vue;
+    const client = supabase.createClient('https://yqedcpfjbkyjgmauahze.supabase.co', 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM');
+
+    createApp({
+        setup() {
+            const hasAccess = ref(false);
+            const totalSeats = ref(0);
+            const currentOccupancy = ref(0);
+
+            const checkPassword = () => {
+                const password = prompt("員工驗證：請輸入管理員密碼");
+                const hashedInput = CryptoJS.SHA256(password).toString();
+                // 使用你自己跑出來的那串正確指紋
+                const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf";
+
+                if (hashedInput === secretFingerprint) {
+                    hasAccess.value = true;
+                    fetchData();
+                } else {
+                    alert("驗證失敗");
+                    window.location.href = "index.html"; 
+                }
+            };
+
+            const fetchData = async () => {
+                const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
+                if (data) {
+                    totalSeats.value = data.total_seats;
+                    currentOccupancy.value = data.current_occupancy;
+                }
+            };
+
+            const updateSeats = async (delta) => {
+                const newValue = currentOccupancy.value + delta;
+                if (newValue < 0 || newValue > totalSeats.value) return;
+                
+                currentOccupancy.value = newValue;
+                await client.from('store_seats').update({ current_occupancy: newValue }).eq('id', 1);
+            };
+
+            const logout = () => { window.location.reload(); };
+
+            onMounted(() => {
+                setTimeout(checkPassword, 100);
+            });
+
+            return { hasAccess, totalSeats, currentOccupancy, updateSeats, logout };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
