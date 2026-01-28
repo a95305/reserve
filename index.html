@@ -100,9 +100,26 @@
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
                 if (data) {
                     totalSeats.value = data.total_seats;
-                    currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
                     isManualOpen.value = data.is_manual_open;
+
+                    // --- 新增：跨天自動歸零檢查 ---
+                    const now = new Date();
+                    const hour = now.getHours();
+                    
+                    // 取得資料最後更新的時間 (Supabase 內建有 updated_at 欄位)
+                    const lastUpdate = new Date(data.updated_at); 
+                    const isSameDay = now.toDateString() === lastUpdate.toDateString();
+
+                    // 如果「不是今天更新的」且「現在已經是早上 11 點後」
+                    // 或者「現在是晚上 7 點後」
+                    if ((!isSameDay && hour >= 11) || hour >= 19) {
+                        currentOccupancy.value = 0;
+                        // 順便幫忙把資料庫也清空，這樣下一個客人進來看到的就是 0
+                        await client.from('store_seats').update({ current_occupancy: 0 }).eq('id', 1);
+                    } else {
+                        currentOccupancy.value = data.current_occupancy;
+                    }
                 }
             };
 
