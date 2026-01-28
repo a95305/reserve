@@ -11,6 +11,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
         [v-cloak] { display: none; }
+        /* 休息中專用樣式 */
         .is-closed-zone { background-color: #f3f4f6 !important; border-color: #e5e7eb !important; pointer-events: none; }
         .is-closed-text { color: #9ca3af !important; }
         .is-closed-number { color: #d1d5db !important; }
@@ -40,20 +41,23 @@
             </div>
 
             <div class="mt-6 space-y-3 text-sm">
-                <div class="flex items-center p-2 -ml-2 text-gray-600">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3">📍</span>
+                <a href="https://maps.app.goo.gl/3XmX9" target="_blank" 
+                   class="flex items-center p-3 -mx-2 rounded-2xl transition-all duration-300 hover:bg-blue-50 group">
+                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">📍</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold">桃園捷運A8站步行 8 分鐘</span>
+                        <span class="font-semibold text-gray-700 group-hover:text-blue-600">桃園捷運A8站步行 8 分鐘</span>
                         <span class="text-[10px] text-gray-400 uppercase">點擊查看捷運站位置</span>
                     </div>
-                </div>
-                <div class="flex items-center p-2 -ml-2 text-gray-600">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3">🏠</span>
+                </a>
+
+                <a href="https://maps.app.goo.gl/yUaN" target="_blank" 
+                   class="flex items-center p-3 -mx-2 rounded-2xl transition-all duration-300 hover:bg-orange-50 group">
+                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">🏠</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold">桃園市龜山區復興二路131巷19號1樓</span>
+                        <span class="font-semibold text-gray-700 group-hover:text-orange-600">桃園市龜山區復興二路131巷19號1樓</span>
                         <span class="text-[10px] text-gray-400 uppercase">點擊開啟 Google Maps 導航</span>
                     </div>
-                </div>
+                </a>
             </div>
 
             <hr class="my-6 border-gray-100">
@@ -100,7 +104,6 @@
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
                 if (data) {
                     totalSeats.value = data.total_seats;
-                    currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
                     isManualOpen.value = data.is_manual_open;
                 }
