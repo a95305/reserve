@@ -11,7 +11,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
         [v-cloak] { display: none; }
-        /* 休息中專用樣式：僅針對座位區 */
         .is-closed-zone { background-color: #f3f4f6 !important; border-color: #e5e7eb !important; pointer-events: none; }
         .is-closed-text { color: #9ca3af !important; }
         .is-closed-number { color: #d1d5db !important; }
@@ -41,21 +40,20 @@
             </div>
 
             <div class="mt-6 space-y-3 text-sm">
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all hover:bg-blue-50 text-gray-600 group">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">📍</span>
+                <div class="flex items-center p-2 -ml-2 text-gray-600">
+                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3">📍</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold group-hover:underline">桃園捷運A8站步行 8 分鐘</span>
+                        <span class="font-semibold">桃園捷運A8站步行 8 分鐘</span>
                         <span class="text-[10px] text-gray-400 uppercase">捷運站位置</span>
                     </div>
-                </a>
-
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all hover:bg-orange-50 text-gray-600 group">
-                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">🏠</span>
+                </div>
+                <div class="flex items-center p-2 -ml-2 text-gray-600">
+                    <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3">🏠</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold group-hover:underline">桃園市龜山區復興二路131巷19號1樓</span>
+                        <span class="font-semibold">桃園市龜山區復興二路131巷19號1樓</span>
                         <span class="text-[10px] text-gray-400 uppercase">Google Maps 導航</span>
                     </div>
-                </a>
+                </div>
             </div>
 
             <hr class="my-6 border-gray-100">
@@ -85,21 +83,17 @@
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const customStatus = ref("");
-            const isManualOpen = ref(true); // 接收後台的手動開關狀態
+            const isManualOpen = ref(true);
 
             const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
 
-            // 核心營業判斷邏輯
             const isOpen = computed(() => {
-                // 1. 如果後台手動關閉，不論時間一律休息
-                if (!isManualOpen.value) return false;
-
-                // 2. 如果手動開啟，則檢查是否在週一公休或營業時段外
+                if (isManualOpen.value === false) return false;
                 const now = new Date();
                 const day = now.getDay();
                 const hour = now.getHours();
-                if (day === 1) return false; // 週一公休
-                return (hour >= 11 && hour < 19); // 11:00-18:59 營業
+                if (day === 1) return false;
+                return (hour >= 11 && hour < 19);
             });
 
             const fetchData = async () => {
@@ -108,13 +102,12 @@
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
-                    isManualOpen.value = data.is_manual_open !== false; // 預設為 true
+                    isManualOpen.value = data.is_manual_open;
                 }
             };
 
             onMounted(() => {
                 fetchData();
-                // 實時監聽資料庫變化
                 client.channel('store-realtime').on('postgres_changes', { 
                     event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                 }, payload => {
