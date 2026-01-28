@@ -21,10 +21,10 @@
         <p class="text-xs text-orange-400 text-center mb-6 font-bold tracking-widest uppercase">STAFF ONLY | 員工管理</p>
         
         <div class="mb-6 flex items-center justify-between bg-gray-700/50 p-4 rounded-2xl border border-gray-600">
-            <span class="text-sm font-bold">手動營業開關</span>
+            <span class="text-sm font-bold text-gray-300">手動營業狀態</span>
             <button @click="toggleBusiness" 
                 :class="isManualOpen ? 'bg-green-500' : 'bg-red-500'"
-                class="px-6 py-2 rounded-full text-xs font-black transition-all active:scale-95 shadow-lg">
+                class="px-6 py-2 rounded-full text-xs font-black transition-all active:scale-95 shadow-lg text-white">
                 {{ isManualOpen ? 'ON 營業中' : 'OFF 休息中' }}
             </button>
         </div>
@@ -45,14 +45,14 @@
         <div class="mt-8 border-t border-gray-700 pt-6">
             <label class="text-[10px] text-gray-400 uppercase tracking-widest block mb-2 text-center">臨時狀態 (如：臨時外出)</label>
             <div class="flex gap-2">
-                <input v-model="statusInput" placeholder="輸入內容..." 
+                <input v-model="statusInput" placeholder="輸入公告內容..." 
                     class="flex-1 bg-gray-700 border border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500 text-white">
                 <button @click="updateStatus" class="bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-4 py-2 rounded-xl transition">更新</button>
             </div>
-            <button @click="clearStatus" class="w-full mt-2 text-[10px] text-gray-500 hover:text-gray-300">清除自訂狀態</button>
+            <button @click="clearStatus" class="w-full mt-2 text-[10px] text-gray-500 hover:text-gray-300">清除公告</button>
         </div>
         
-        <button onclick="location.reload()" class="w-full mt-8 py-2 text-xs text-gray-600 hover:text-white transition">登出 / 鎖定後台</button>
+        <button onclick="location.reload()" class="w-full mt-8 py-2 text-xs text-gray-600 hover:text-white transition text-center">登出後台</button>
     </div>
 </div>
 
@@ -70,12 +70,12 @@
             let debounceTimer = null;
 
             const checkPassword = () => {
-                const password = prompt("請輸入員工驗證密碼：");
+                const password = prompt("請輸入管理密碼：");
                 if (!password) { window.location.href = "index.html"; return; }
                 const hashedInput = CryptoJS.SHA256(password).toString();
                 if (hashedInput === "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf") {
                     hasAccess.value = true; fetchData();
-                } else { alert("驗證失敗！"); window.location.href = "index.html"; }
+                } else { alert("密碼錯誤"); window.location.href = "index.html"; }
             };
 
             const fetchData = async () => {
@@ -104,8 +104,9 @@
             };
 
             const updateStatus = async () => {
-                await client.from('store_seats').update({ status_text: statusInput.value }).eq('id', 1);
-                alert("狀態已同步至前台！");
+                const { error } = await client.from('store_seats').update({ status_text: statusInput.value }).eq('id', 1);
+                if (error) alert("更新失敗，請檢查欄位設定");
+                else alert("前台公告已更新！");
             };
 
             const clearStatus = async () => {
