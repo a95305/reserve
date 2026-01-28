@@ -29,11 +29,29 @@
             <button @click="updateSeats(-1)" class="bg-gray-600 hover:bg-gray-500 active:scale-90 w-16 h-16 rounded-full text-3xl transition">－</button>
         </div>
         
-        <div class="mt-8 text-center text-xs text-gray-500">
+        <div class="mt-4 text-center text-xs text-gray-500">
             總座位數：{{ totalSeats }} | 剩餘：{{ totalSeats - currentOccupancy }}
         </div>
+
+        <div class="mt-8 border-t border-gray-700 pt-6">
+            <label class="text-[10px] text-gray-400 uppercase tracking-widest block mb-2 text-center">臨時狀態設定 (如：臨時外出)</label>
+            <div class="flex gap-2">
+                <input 
+                    v-model="statusInput" 
+                    placeholder="例如：臨時外出中" 
+                    class="flex-1 bg-gray-700 border border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500 text-white"
+                >
+                <button 
+                    @click="updateStatus" 
+                    class="bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+                >
+                    更新
+                </button>
+            </div>
+            <button @click="clearStatus" class="w-full mt-2 text-[10px] text-gray-500 hover:text-gray-300">清除自訂狀態</button>
+        </div>
         
-        <button onclick="location.reload()" class="w-full mt-6 py-2 text-xs text-gray-600 hover:text-white transition">登出/鎖定</button>
+        <button onclick="location.reload()" class="w-full mt-8 py-2 text-xs text-gray-600 hover:text-white transition">登出 / 鎖定後台</button>
     </div>
 </div>
 
@@ -46,14 +64,16 @@
             const hasAccess = ref(false);
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
+            const statusInput = ref("");
             let debounceTimer = null;
 
+            // 密碼驗證邏輯
             const checkPassword = () => {
                 const password = prompt("請輸入員工驗證密碼：");
                 if (!password) { window.location.href = "index.html"; return; }
 
                 const hashedInput = CryptoJS.SHA256(password).toString();
-                const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf";
+                const secretFingerprint = "ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf"; // 密碼 2580
 
                 if (hashedInput === secretFingerprint) {
                     hasAccess.value = true;
@@ -69,9 +89,11 @@
                 if (data) {
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
+                    statusInput.value = data.status_text || ""; // 同步目前的臨時狀態
                 }
             };
 
+            // 更新人數
             const updateSeats = (delta) => {
                 const newValue = currentOccupancy.value + delta;
                 if (newValue < 0 || newValue > totalSeats.value) return;
@@ -83,11 +105,28 @@
                 }, 300);
             };
 
+            // 更新臨時狀態文字
+            const updateStatus = async () => {
+                const { error } = await client.from('store_seats').update({ status_text: statusInput.value }).eq('id', 1);
+                if (!error) alert("狀態已更新！");
+                else alert("更新失敗，請檢查資料庫欄位設定");
+            };
+
+            // 清除臨時狀態
+            const clearStatus = async () => {
+                statusInput.value = "";
+                await client.from('store_seats').update({ status_text: "" }).eq('id', 1);
+                alert("自訂狀態已清除");
+            };
+
             onMounted(() => {
                 setTimeout(checkPassword, 100);
             });
 
-            return { hasAccess, totalSeats, currentOccupancy, updateSeats };
+            return { 
+                hasAccess, totalSeats, currentOccupancy, statusInput,
+                updateSeats, updateStatus, clearStatus 
+            };
         }
     }).mount('#app');
 </script>
