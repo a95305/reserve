@@ -11,44 +11,64 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
         [v-cloak] { display: none; }
+        /* 休息中專用樣式 */
+        .is-closed-zone { background-color: #f3f4f6 !important; border-color: #e5e7eb !important; }
+        .is-closed-text { color: #9ca3af !important; }
+        .is-closed-number { color: #6b7280 !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
 
 <div id="app" v-cloak class="min-h-screen flex flex-col items-center p-4">
     <div class="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-8">
-        <div class="h-48 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/p/AF1QipMO2dQGkN3n1GQePAGbiLwB4oIFspSKIM_LwnsU=s1360-w1360-h1020-rw');">
+        <div class="h-48 bg-cover bg-center relative" style="background-image: url('https://lh3.googleusercontent.com/p/AF1QipMO2dQGkN3n1GQePAGbiLwB4oIFspSKIM_LwnsU=s1360-w1360-h1020-rw');">
+            <div class="absolute mt-4 ml-4 flex flex-col gap-2">
+                <span :class="isOpen ? 'bg-green-500' : 'bg-red-500'" class="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit">
+                    {{ isOpen ? '● 營業中' : '○ 休息中' }}
+                </span>
+                <span v-if="customStatus" class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg w-fit">
+                    ⚠️ {{ customStatus }}
+                </span>
+            </div>
         </div>
 
         <div class="p-8">
-            <h1 class="text-2xl font-extrabold tracking-tight">ㄩㄢˊ咖啡事務所|yuancoffee</h1>
-            
-            <div class="mt-6 space-y-3 text-sm text-gray-500">
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 group">
+            <h1 class="text-2xl font-extrabold tracking-tight text-gray-800">ㄩㄢˊ咖啡事務所|yuancoffee</h1>
+            <div class="mt-4 flex items-center text-xs font-medium text-gray-400">
+                <span class="mr-2">🕒</span>
+                <span>11:00 - 19:00 (週一公休)</span>
+            </div>
+
+            <div class="mt-6 space-y-3 text-sm">
+                <a href="https://www.google.com/maps/search/?api=1&query=桃園捷運A8站" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-blue-50 text-gray-500 hover:text-blue-600 group">
                     <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">📍</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold text-gray-700 group-hover:underline">桃園捷運A8站步行 8 分鐘</span>
-                        <span class="text-[10px] text-gray-400 font-medium tracking-tighter uppercase">捷運站位置</span>
+                        <span class="font-semibold group-hover:underline">桃園捷運A8站步行 8 分鐘</span>
+                        <span class="text-[10px] text-gray-400 uppercase">捷運站位置</span>
                     </div>
                 </a>
 
-                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-orange-50 hover:text-orange-600 group">
+                <a href="https://www.google.com/maps/search/?api=1&query=桃園市龜山區復興二路131巷19號1樓" target="_blank" class="flex items-center p-2 -ml-2 rounded-xl transition-all duration-300 hover:bg-orange-50 text-gray-500 hover:text-orange-600 group">
                     <span class="bg-white shadow-sm border border-gray-100 rounded-lg p-1 mr-3 group-hover:scale-110 transition-transform">🏠</span>
                     <div class="flex flex-col">
-                        <span class="font-semibold text-gray-700 group-hover:underline">桃園市龜山區復興二路131巷19號1樓</span>
-                        <span class="text-[10px] text-gray-400 font-medium tracking-tighter uppercase">Google Maps 導航</span>
+                        <span class="font-semibold group-hover:underline">桃園市龜山區復興二路131巷19號1樓</span>
+                        <span class="text-[10px] text-gray-400 uppercase">Google Maps 導航</span>
                     </div>
                 </a>
             </div>
 
             <hr class="my-6 border-gray-100">
 
-            <div class="bg-orange-50 rounded-3xl p-6 text-center border border-orange-100">
-                <span class="text-xs font-bold text-orange-400 uppercase tracking-widest">即時座位數</span>
-                <div class="flex justify-center items-baseline mt-2">
-                    <span class="text-sm text-gray-400 font-medium">剩餘</span>
-                    <span class="text-6xl font-black text-orange-500 mx-2 transition-all">{{ remainingSeats }}</span>
-                    <span class="text-sm text-gray-400 font-medium">位 / 共 {{ totalSeats }} 位</span>
+            <div :class="{'is-closed-zone': !isOpen}" class="bg-orange-50 rounded-3xl p-6 text-center border border-orange-100 transition-colors duration-500">
+                <span :class="{'is-closed-text': !isOpen}" class="text-xs font-bold text-orange-400 uppercase tracking-widest block mb-2">
+                    {{ isOpen ? '即時座位數' : '目前不提供座位' }}
+                </span>
+                <div class="flex justify-center items-baseline">
+                    <span :class="{'is-closed-text': !isOpen}" class="text-sm text-gray-400 font-medium">剩餘</span>
+                    <span :class="isOpen ? 'text-orange-500' : 'is-closed-number'" class="text-6xl font-black mx-2 transition-colors">
+                        {{ isOpen ? remainingSeats : 0 }}
+                    </span>
+                    <span :class="{'is-closed-text': !isOpen}" class="text-sm text-gray-400 font-medium">位 / 共 {{ totalSeats }} 位</span>
                 </div>
             </div>
         </div>
@@ -57,35 +77,44 @@
 
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
-    // 初始化 Supabase
     const client = supabase.createClient('https://yqedcpfjbkyjgmauahze.supabase.co', 'sb_publishable_2aql_gXkY9fdY6rImYeOyw_M6-opiCM');
 
     createApp({
         setup() {
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
+            const customStatus = ref("");
+
             const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
 
-            // 純讀取資料
+            const isOpen = computed(() => {
+                const now = new Date();
+                const day = now.getDay();
+                const hour = now.getHours();
+                if (day === 1) return false;
+                return (hour >= 11 && hour < 19);
+            });
+
             const fetchData = async () => {
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
                 if (data) {
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
+                    customStatus.value = data.status_text || "";
                 }
             };
 
             onMounted(() => {
                 fetchData();
-                // 訂閱資料庫更新（當你在後台修改時，這裡會自動跳動）
                 client.channel('store-realtime').on('postgres_changes', { 
                     event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                 }, payload => {
                     currentOccupancy.value = payload.new.current_occupancy;
+                    customStatus.value = payload.new.status_text || "";
                 }).subscribe();
             });
 
-            return { totalSeats, currentOccupancy, remainingSeats };
+            return { totalSeats, currentOccupancy, remainingSeats, isOpen, customStatus };
         }
     }).mount('#app');
 </script>
