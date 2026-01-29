@@ -89,8 +89,30 @@
             };
 
             const toggleBusiness = async () => {
+                // 1. 切換本地狀態
                 isManualOpen.value = !isManualOpen.value;
-                await client.from('store_seats').update({ is_manual_open: isManualOpen.value }).eq('id', 1);
+                
+                // 準備更新的資料
+                const updateData = { 
+                    is_manual_open: isManualOpen.value,
+                    is_open: isManualOpen.value 
+                };
+
+                // 2. 核心邏輯：如果切換到「休息中」，強制將人數也歸零
+                if (isManualOpen.value === false) {
+                    currentOccupancy.value = 0; // 同步更新後台畫面顯示的人數
+                    updateData.current_occupancy = 0; // 加入資料庫更新清單
+                }
+
+                // 3. 同步更新資料庫
+                const { error } = await client.from('store_seats')
+                    .update(updateData)
+                    .eq('id', 1);
+
+                if (error) {
+                    console.error("更新失敗:", error);
+                    alert("營業狀態更新失敗");
+                }
             };
 
             const updateSeats = (delta) => {
