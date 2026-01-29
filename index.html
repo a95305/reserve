@@ -69,7 +69,7 @@
                 <div class="flex justify-center items-baseline">
                     <span :class="{'is-closed-text': !isOpen}" class="text-sm text-gray-400 font-medium">剩餘</span>
                     <span :class="isOpen ? 'text-orange-500' : 'is-closed-number'" class="text-6xl font-black mx-2 transition-colors">
-                        {{ isOpen ? remainingSeats : 0 }}
+                        {{ remainingSeats }}
                     </span>
                     <span :class="{'is-closed-text': !isOpen}" class="text-sm text-gray-400 font-medium">位 / 共 {{ totalSeats }} 位</span>
                 </div>
@@ -87,29 +87,27 @@
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const customStatus = ref("");
-            const isManualOpen = ref(true);
+            const dbIsOpen = ref(true); // 這是資料庫裡面的 is_open 欄位
 
             const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
 
+            // 邏輯最簡化：資料庫說開就是開，說關就是關
             const isOpen = computed(() => {
-                if (isManualOpen.value === false) return false;
-                const now = new Date();
-                const day = now.getDay();
-                const hour = now.getHours();
-                if (day === 1) return false;
-                return (hour >= 11 && hour < 19);
+                return dbIsOpen.value; 
             });
 
             const fetchData = async () => {
                 const { data } = await client.from('store_seats').select('*').eq('id', 1).single();
                 if (data) {
                     totalSeats.value = data.total_seats;
-                    currentOccupancy.value = data.current_occupancy; // 已修正：確保初次加載抓到人數
+                    currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
-                    isManualOpen.value = data.is_manual_open;
+                    // 這裡最重要的就是這行，它是你的營業開關
+                    dbIsOpen.value = data.is_open; 
                 }
             };
 
+            // 監聽器也要同步
             onMounted(() => {
                 fetchData();
                 client.channel('store-realtime').on('postgres_changes', { 
@@ -117,7 +115,7 @@
                 }, payload => {
                     currentOccupancy.value = payload.new.current_occupancy;
                     customStatus.value = payload.new.status_text || "";
-                    isManualOpen.value = payload.new.is_manual_open;
+                    dbIsOpen.value = payload.new.is_open; // 後台一改，這裡立刻變
                 }).subscribe();
             });
 
