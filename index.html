@@ -87,13 +87,22 @@
             const totalSeats = ref(0);
             const currentOccupancy = ref(0);
             const customStatus = ref("");
-            const dbIsOpen = ref(true); // 這是資料庫裡面的 is_open 欄位
+            const dbIsOpen = ref(true);      // 資料庫的 is_open (自動排程用)
+            const isManualOpen = ref(true);  // 資料庫的 is_manual_open (手動用)
 
-            const remainingSeats = computed(() => Math.max(0, totalSeats.value - currentOccupancy.value));
+            // 修改後的計算邏輯：當店面休息中，剩餘座位數顯示為 0
+            const remainingSeats = computed(() => {
+                // 如果 自動排程關閉 OR 手動開關關閉，則顯示 0
+                if (dbIsOpen.value === false || isManualOpen.value === false) {
+                    return 0;
+                }
+                // 否則，正常顯示計算後的剩餘座位，並確保不低於 0
+                return Math.max(0, totalSeats.value - currentOccupancy.value);
+            });
 
-            // 邏輯最簡化：資料庫說開就是開，說關就是關
+            // 營業狀態判斷：兩者皆為 true 才算營業
             const isOpen = computed(() => {
-                return dbIsOpen.value; 
+                return dbIsOpen.value && isManualOpen.value; 
             });
 
             const fetchData = async () => {
@@ -102,20 +111,22 @@
                     totalSeats.value = data.total_seats;
                     currentOccupancy.value = data.current_occupancy;
                     customStatus.value = data.status_text || "";
-                    // 這裡最重要的就是這行，它是你的營業開關
                     dbIsOpen.value = data.is_open; 
+                    isManualOpen.value = data.is_manual_open; // 同步手動開關狀態
                 }
             };
 
-            // 監聽器也要同步
+            // 監聽器：當後台手動修改任何欄位時，前台會立刻同步
             onMounted(() => {
                 fetchData();
                 client.channel('store-realtime').on('postgres_changes', { 
                     event: 'UPDATE', schema: 'public', table: 'store_seats', filter: 'id=eq.1' 
                 }, payload => {
+                    // 同步所有關鍵數值
                     currentOccupancy.value = payload.new.current_occupancy;
                     customStatus.value = payload.new.status_text || "";
-                    dbIsOpen.value = payload.new.is_open; // 後台一改，這裡立刻變
+                    dbIsOpen.value = payload.new.is_open;           // 同步排程狀態
+                    isManualOpen.value = payload.new.is_manual_open; // 同步手動狀態
                 }).subscribe();
             });
 
